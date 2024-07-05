@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Models\UserAccessToken;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
 
@@ -12,7 +17,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        Passport::ignoreRoutes();
     }
 
     /**
@@ -20,6 +25,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Passport::loadKeysFrom(__DIR__.'/../secrets/oauth');
+           
     }
 }

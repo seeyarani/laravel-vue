@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->longText('access_token');
-            $table->foreign('user_id')->references('id')->on('users');
-            $table->timestamps();
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('email_verification_code',20)->after('remember_token')->nullable();
         });
     }
 
@@ -25,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users_access_tokens');
+        Schema::table('users', function (Blueprint $table) {
+            //
+        });
     }
 };
