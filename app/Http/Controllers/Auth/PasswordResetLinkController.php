@@ -3,14 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PasswordResetMail;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class PasswordResetLinkController extends Controller
@@ -22,86 +20,117 @@ class PasswordResetLinkController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
+            return response()->json(['error' => $validator->errors()], 400);
         }
 
         $email = $request->email;
-        $six_digit_random_number = random_int(100000, 999999);
+        $user = User::where('email', $email)->first();
 
-        $user = User::where('email',$email)->update([
-            'email_verification_code' => $six_digit_random_number
+        $token = getUid();
+
+        // Remove the existing token for the email, if any
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+        // Insert the new token
+        DB::table('password_reset_tokens')->insert([
+            'email' => $email,
+            'token' => $token,
         ]);
 
-        return response()->json(['email',$email],200);
-    }
+        $resetLink = config('app.frontend_url') . '/reset-password?token=' . $token . '&email=' . urlencode($email);
 
-    public function verification(Request $request)
-    {
-        $email = $request->email;
-        $email_verification_code = $request->email_verification_code;
+        // Send email
+        Mail::to($email)->send(new PasswordResetMail($resetLink));
 
-        $user = User::where('email',$email)->first();
-
-        if ($user && $user->email_verification_code === $email_verification_code) {
-            return response()->json(['message' => 'Verification successful'], 200);
-        }
-
-        return response()->json(['message' => 'Invalid verification code'], 401);
+        return response()->json(['message' => 'Password Reset Email Sent Successfully.'], 200);
     }
 
     public function resetPassword(Request $request)
     {
-        $email = $request->email;
-        $password = $request->password;
+        $user = User::where('email', $request->email)->first();
 
-        $user = User::where('email',$email)->first();
+        if ($user) {
+            $passwordReset = DB::table('password_reset_tokens')
+                ->where('email', $request->email)
+                ->where('token', $request->token)
+                ->first();
 
-        if($user){
-            $user->update([
-                'password' => bcrypt($request->password),
-                'email_verification_code' => 473737,
-            ]);
+            if ($passwordReset) {
+                $user->update([
+                    'password' => Hash::make($request->password),
+                ]);
 
-            Log::info($user);
+                DB::table('password_reset_tokens')
+                    ->where('email', $request->email)
+                    ->delete();
 
-            return response()->json(['message'=> 'Password Reset Successfully'],200);
+                return response()->json(['message' => 'Password Reset Successfully'], 200);
+            } else {
+                return response()->json(['error' => 'Invalid Token'], 400);
+            }
+        } else {
+            return response()->json(['error' => 'User not found'], 400);
         }
+    }
 
-   }
-    // /**
-    //  * Display the password reset link request view.
-    //  */
-    // public function create(): Response
+    // public function sendVerificationCode(Request $request)
     // {
-    //     return Inertia::render('Auth/ForgotPassword', [
-    //         'status' => session('status'),
-    //     ]);
-    // }
-
-    // /**
-    //  * Handle an incoming password reset link request.
-    //  *
-    //  * @throws \Illuminate\Validation\ValidationException
-    //  */
-    // public function store(Request $request): RedirectResponse
-    // {
-    //     $request->validate([
-    //         'email' => 'required|email',
+    //     $validator = Validator::make($request->all(), [
+    //         'email' => 'required|string|email|max:255|exists:users,email'
     //     ]);
 
-    //     // We will send the password reset link to this user. Once we have attempted
-    //     // to send the link, we will examine the response then see the message we
-    //     // need to show to the user. Finally, we'll send out a proper response.
-    //     $status = Password::sendResetLink(
+    //     if ($validator->fails()) {
+    //         return response()->json(['error' => $validator->errors()], 400);
+    //     }
+
+    //     $response = Password::sendResetLink(
     //         $request->only('email')
     //     );
 
-    //     if ($status == Password::RESET_LINK_SENT) {
-    //         return back()->with('status', __($status));
+    //     if ($response === Password::RESET_LINK_SENT) {
+    //         return response()->json(['message' => 'Password Reset Email Sent Successfully.'], 200);
+    //     } else {
+    //         return response()->json(['error' => __($response)], 400);
+    //     }
+    // }
+
+    // public function verification(Request $request)
+    // {
+    //     $email = $request->email;
+    //     $email_verification_code = $request->email_verification_code;
+
+    //     $user = User::where('email',$email)->first();
+
+    //     if ($user && $user->email_verification_code === $email_verification_code) {
+    //         return response()->json(['message' => 'Verification successful'], 200);
     //     }
 
-    //     throw ValidationException::withMessages([
-    //         'email' => [trans($status)],
-    //     ]);
+    //     return response()->json(['message' => 'Invalid verification code'], 401);
+    // }
+
+    // public function resetPassword(Request $request)
+    // {    
+    //     $user = User::where('email', $request->email)->first();
+
+    //     if ($user) {
+    //         $passwordReset = DB::table(env('AUTH_PASSWORD_RESET_TOKEN_TABLE'))
+    //         ->where('email', $request->email)
+    //         ->where('token', $request->token)
+    //         ->first();
+
+    //         if ($passwordReset) {
+    //             $user->update([
+    //                 'password' => Hash::make($request->password),
+    //             ]);
+
+    //             DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+    //             return response()->json(['message' => 'Password Reset Successfully'], 200);
+    //         } else {
+    //             return response()->json(['error' => 'Invalid Token'], 400);
+    //         }
+    //     } else {
+    //         return response()->json(['error' => 'User not found'], 400);
+    //     }
     // }
 }

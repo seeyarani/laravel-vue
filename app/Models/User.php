@@ -2,21 +2,15 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens,Notifiable;
 
     protected $guarded = [];
-
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
 
     protected function casts(): array
     {
@@ -25,4 +19,16 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    ###############################################################################
+    ##Relationships################################################################
+    ###############################################################################
+
+    public function user_access_token(){
+        return $this->hasOne(UserAccessToken::class);
+    }
+
+    public function tasks(){
+        return $this->hasMany(Task::class);
+    }   
 }

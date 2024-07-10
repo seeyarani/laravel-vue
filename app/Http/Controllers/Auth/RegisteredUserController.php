@@ -18,11 +18,6 @@ use Illuminate\Support\Facades\Validator;
 
 class RegisteredUserController extends Controller
 {
-    // public function create(): Response
-    // {
-    //     return Inertia::render('Auth/Register');
-    // }
-
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -32,19 +27,19 @@ class RegisteredUserController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
+            return response()->json(['error' => $validator->errors()], 400);
         }
 
         $user = User::create([
+            'uid' => getUid(),
             'name' => $request->name,
             'email' => $request->email,
-            'password' => bcrypt($request->password),
+            'password' => Hash::make($request->password),
         ]);
 
         $token = $user->createToken('passportToken')->accessToken;
 
-        $UserAccessToken = UserAccessToken::create([
-            'user_id' => $user->id,
+        $user->user_access_token()->create([
             'access_token' => $token,
         ]);
 

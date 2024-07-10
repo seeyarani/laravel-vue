@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 function logMessage($message, $isTerminal = false)
 {
@@ -10,4 +11,9 @@ function logMessage($message, $isTerminal = false)
     } else {
         Log::info($message);
     }
+}
+
+function getUid()
+{
+    return (string) Str::uuid();
 }
